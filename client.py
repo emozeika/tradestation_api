@@ -113,7 +113,3 @@ class TradeStationClient(object):
             return req.json
 
 
-
-if __name__ == '__main__':
-    from config import TS_USERNAME, TS_API_KEY, TS_SECRET_API_KEY, TS_STATE
-    TradeStationClient(TS_USERNAME, TS_API_KEY, TS_SECRET_API_KEY, state = TS_STATE)._get_access_token()
