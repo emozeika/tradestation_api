@@ -1,11 +1,22 @@
 #loading dependencies
 import webbrowser
+import requests
 
 
 
 class TradeStationClient(object):
 
-    def __init__(self, username: str, client_id: str, client_secret: str, scope: list = None, state: str = None) -> None:
+    def __init__(
+        self, 
+        username: str, 
+        client_id: str, 
+        client_secret: str, 
+        scope: list | str = 'openid', 
+        state: str = None,
+        auth_manual : bool = True
+    ) -> None:
+
+
         self.CONFIG_ = {
             #known parameters
             'base' : 'https://api.tradestation.com',
@@ -13,19 +24,23 @@ class TradeStationClient(object):
             'api_version' : 'v3',
             'paper_api_version' : 'v3',
             'auth_endpoint' : 'https://signin.tradestation.com/authorize',
-            'response_type' : 'code',
             'token_endpoint' : 'https://signin.tradestation.com/oauth/token',
+            'token_header' : {'content-type': 'application/x-www-form-urlencoded'},
+            'response_type' : 'code',
+            'grant_type' : 'authorization_code',
+
 
             #instance defined parameters
             'client_id': client_id,
             'username': username,
             'client_secret' : client_secret,
             'redirect_uri' : 'http://localhost:8080',
-            'scope' : 'openid ' + ' '.join(scope) if scope else 'openid',
-            'state' : state
+            'scope' : scope,
+            'state' : state,
+            'auth_manual' : auth_manual
         }
 
-    def _build_auth_url(self) -> None:
+    def _build_auth_url(self) -> str:
         '''
         Function builds autoriztion URL
 
@@ -44,8 +59,7 @@ class TradeStationClient(object):
 
         return auth_url
 
-
-    def _auth_code_manual(self) -> None:
+    def _authorize_manual(self) -> str:
         '''
         Authorizes session for Client by manual process. User must login into brower and grab auth code from 
         redirect. Redirect uri = http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
@@ -60,14 +74,52 @@ class TradeStationClient(object):
 
         return input('Please enter the authorization code from the url: ')
     
-    def _auth_code_auto(self) -> None:
+    def _authorize_auto(self) -> None:
         '''
         TODO: build automatic process for grabbing auth code
         '''
 
-    def _get_access_token(self) -> None:
+    def _build_access_token_url(self) -> str:
+        '''
+        Builds the access token url
+        
+        Returns:
+        -----
+        (str): string representing the POST request of the get access token url
+        '''
+        url = self.CONFIG_['token_enpoint'] + ''
+
+    def _get_access_token(self) -> dict:
         '''
         Taking the authorization code and using it to retieve access token
         '''
+        
+        if self.CONFIG_['auth_manual']:
+            auth_code = self._authorize_manual()
+        else:
+            auth_code = self._authorize_auto()
+
+        #create data dict for post request
+        data = {'code' : auth_code}
+        for key in ['grant_type', 'client_id', 'client_secret', 'redirect_uri']:
+            data[key] = self.CONFIG_[key]
+
+        #sending request to TS for access key
+        req = requests.post(
+            url = self.CONFIG_['token_endpoint'],
+            headers = self.CONFIG_['token_header'],
+            data = data
+        )
+        
+        if req.status_code != 200: 
+            print('-'*80)
+            print(f'Access Token Retrieval Unsuccessful: {req} \n \n')
+        else:
+            print(req.json())
+            return req.json
 
 
+
+if __name__ == '__main__':
+    from config import TS_USERNAME, TS_API_KEY, TS_SECRET_API_KEY, TS_STATE
+    TradeStationClient(TS_USERNAME, TS_API_KEY, TS_SECRET_API_KEY, state = TS_STATE)._get_access_token()
