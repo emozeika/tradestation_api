@@ -62,7 +62,7 @@ class TradeStationClient(object):
     def _authorize_manual(self) -> str:
         '''
         Authorizes session for Client by manual process. User must login into brower and grab auth code from 
-        redirect. Redirect uri = http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
+        redirect_uri = http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
 
         Returns:
         -----
@@ -78,16 +78,6 @@ class TradeStationClient(object):
         '''
         TODO: build automatic process for grabbing auth code
         '''
-
-    def _build_access_token_url(self) -> str:
-        '''
-        Builds the access token url
-        
-        Returns:
-        -----
-        (str): string representing the POST request of the get access token url
-        '''
-        url = self.CONFIG_['token_enpoint'] + ''
 
     def _get_access_token(self) -> dict:
         '''
