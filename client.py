@@ -75,13 +75,17 @@ class TradeStationClient(object):
         return input('Please enter the authorization code from the url: ')
     
     def _authorize_auto(self) -> None:
-        '''
-        TODO: build automatic process for grabbing auth code
-        '''
+        #TODO: build automatic process for grabbing auth code
+        pass
 
     def _get_access_token(self) -> dict:
         '''
-        Taking the authorization code and using it to retieve access token
+        Taking the authorization code and using it to retieve access token.
+        NOTE: access tokens expire every 20 mins. 
+
+        Returns:
+        -----
+        (dict) : Post response from authorization code containing access token
         '''
         
         if self.CONFIG_['auth_manual']:
