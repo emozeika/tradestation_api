@@ -83,16 +83,21 @@ class TradeStationClient(object):
 
         return input('Please enter the authorization code from the url: ')
     
-    def _authorize_auto(self) -> None:
-        #TODO: build automatic process for grabbing auth code
-        auth_url = self._build_auth_url()
+    def _authorize_auto(self) -> str:
+        '''
+        Function to automate parsing through the entire autothentication process.
+        This process uses chrome driver which needs to be synced with your chrome version.
+        In addition <add something about 2FA when that part is completed>
+
+        Returns:
+        -----
+        (str): authentication code form ts login redirect
+        '''
 
         chrome_options = Options()
         chrome_options.add_experimental_option("detach", True)
-
-
         driver = webdriver.Chrome(CHROME_DRIVER_PATH, chrome_options=chrome_options)
-        driver.get(auth_url)
+        driver.get(self._build_auth_url())
         time.sleep(1)
 
         #inputting credentials
@@ -110,6 +115,9 @@ class TradeStationClient(object):
         #grabbing auth_code from current_url
         auth_code = driver.current_url.split['code='][-1].split['&'][0]
         print(auth_code)
+
+        time.sleep(1)
+        driver.close()
         return auth_code
 
     def _get_access_token(self) -> dict:
