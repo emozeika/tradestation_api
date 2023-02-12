@@ -1,6 +1,6 @@
 #loading dependencies
-import webbrowser
 import requests
+import webbrowser
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -12,6 +12,9 @@ from config import CHROME_DRIVER_PATH
 import time
 
 class TradeStationClient(object):
+    '''
+    TradeStationClient class is to be used with the tradestation api. 
+    '''
 
     def __init__(
         self, 
@@ -33,7 +36,7 @@ class TradeStationClient(object):
             'paper_api_version' : 'v3',
             'auth_endpoint' : 'https://signin.tradestation.com/authorize',
             'token_endpoint' : 'https://signin.tradestation.com/oauth/token',
-            'token_header' : {'content-type': 'application/x-www-form-urlencoded'},
+            'token_header' : {'content-type':'application/x-www-form-urlencoded'},
             'response_type' : 'code',
             'grant_type' : 'authorization_code',
 
@@ -48,6 +51,7 @@ class TradeStationClient(object):
             'state' : state,
             'auth_manual' : auth_manual
         }
+
 
     def _build_auth_url(self) -> str:
         '''
@@ -68,10 +72,12 @@ class TradeStationClient(object):
 
         return auth_url
 
+
     def _authorize_manual(self) -> str:
         '''
-        Authorizes session for Client by manual process. User must login into brower and grab auth code from 
-        redirect_uri = http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
+        Authorizes session for Client by manual process. User must login into 
+        browser and grab auth code from redirect_uri 
+        ie: http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
 
         Returns:
         -----
@@ -82,12 +88,14 @@ class TradeStationClient(object):
         webbrowser.open_new(auth_url)
 
         return input('Please enter the authorization code from the url: ')
+
     
     def _authorize_auto(self) -> str:
         '''
         Function to automate parsing through the entire autothentication process.
-        This process uses chrome driver which needs to be synced with your chrome version.
-        In addition <add something about 2FA when that part is completed>
+        This process uses chrome driver which needs to be synced with your 
+        chrome version. In addition <add something about 2FA when that part is 
+        completed>
 
         Returns:
         -----
@@ -107,8 +115,9 @@ class TradeStationClient(object):
         time.sleep(1)
 
         #checking if needing to 2FA
-        if 'https://signin.tradestation.com/u/mfa-sms-challenge' in driver.current_url:
-            driver.find_element(By.ID, 'code').send_keys(input('Enter 2FA code from text message: '))
+        if 'mfa-sms-challenge' in driver.current_url:
+            code = input('Enter 2FA code from text message: ')
+            driver.find_element(By.ID, 'code').send_keys(code)
             #TODO: make line above manual
         time.sleep(1)
 
@@ -119,6 +128,7 @@ class TradeStationClient(object):
         time.sleep(1)
         driver.close()
         return auth_code
+
 
     def _get_access_token(self) -> dict:
         '''
