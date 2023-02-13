@@ -1,14 +1,25 @@
 #loading dependencies
-import webbrowser
 import requests
+import webbrowser
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 
 
+
+
+from config import CHROME_DRIVER_PATH
+import time
 
 class TradeStationClient(object):
+    '''
+    TradeStationClient class is to be used with the tradestation api. 
+    '''
 
     def __init__(
         self, 
         username: str, 
+        password: str,
         client_id: str, 
         client_secret: str, 
         scope: list | str = 'openid', 
@@ -25,7 +36,7 @@ class TradeStationClient(object):
             'paper_api_version' : 'v3',
             'auth_endpoint' : 'https://signin.tradestation.com/authorize',
             'token_endpoint' : 'https://signin.tradestation.com/oauth/token',
-            'token_header' : {'content-type': 'application/x-www-form-urlencoded'},
+            'token_header' : {'content-type':'application/x-www-form-urlencoded'},
             'response_type' : 'code',
             'grant_type' : 'authorization_code',
 
@@ -33,12 +44,14 @@ class TradeStationClient(object):
             #instance defined parameters
             'client_id': client_id,
             'username': username,
+            'password':password,
             'client_secret' : client_secret,
             'redirect_uri' : 'http://localhost:8080',
             'scope' : scope,
             'state' : state,
             'auth_manual' : auth_manual
         }
+
 
     def _build_auth_url(self) -> str:
         '''
@@ -59,10 +72,12 @@ class TradeStationClient(object):
 
         return auth_url
 
+
     def _authorize_manual(self) -> str:
         '''
-        Authorizes session for Client by manual process. User must login into brower and grab auth code from 
-        redirect_uri = http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
+        Authorizes session for Client by manual process. User must login into 
+        browser and grab auth code from redirect_uri 
+        ie: http://localhost:8080/?code=<AUTHORIZATION_CODE>&state=fhx8y3lfchqxcb8q
 
         Returns:
         -----
@@ -73,10 +88,66 @@ class TradeStationClient(object):
         webbrowser.open_new(auth_url)
 
         return input('Please enter the authorization code from the url: ')
+
+    def _get_auth_code_input(self) -> str:
+        '''
+        Function to get manual input of MFA auth code from SMS message
+        
+        Returns:
+        -----
+        (str): string representing the auth_code
+        '''
+        code =  input('Enter 2FA code from text message: ')
+        return code
+
     
-    def _authorize_auto(self) -> None:
-        #TODO: build automatic process for grabbing auth code
-        pass
+    def _authorize_auto(self) -> str:
+        '''
+        Function to automate parsing through the entire autothentication process.
+        This process uses chrome driver which needs to be synced with your 
+        chrome version. In addition <add something about 2FA when that part is 
+        completed>
+
+        Returns:
+        -----
+        (str): authentication code form ts login redirect
+        '''
+
+        #setting driver options and setting url connection
+        chrome_options = Options()
+        chrome_options.add_experimental_option("detach", True)
+        #chrome_options.headless = True #this keeps a browser from opening
+        chrome_options.add_argument("--log-level=3") #keeps output from webdriver quiet
+        driver = webdriver.Chrome(CHROME_DRIVER_PATH, chrome_options=chrome_options)
+        driver.get(self._build_auth_url())
+        time.sleep(1)
+
+        #inputting credentials
+        for elem in ['username', 'password']:
+            driver.find_element(By.ID, elem).send_keys(self.CONFIG_[elem])
+        driver.find_element(By.ID, 'btn-login').click()
+        time.sleep(1)
+
+        #checking if needing to MFA for account (current only trust device for 30 days)
+        if 'mfa-sms-challenge' in driver.current_url:
+            #TODO: make SMS otp_code input automatic.... maybe twilio integration???
+            #keeps trusted device for 30 days
+            driver.find_element(
+                By.XPATH, 
+                ".//*[contains(text(), 'Remember this device for 30 days')]").click() 
+            otp_code = self._get_auth_code_input()
+            driver.find_element(By.ID, 'code').send_keys(otp_code)
+            time.sleep(0.5)
+            driver.find_element(By.NAME, 'action').click()
+            time.sleep(2)
+
+        #grabbing auth_code from current_url
+        url = driver.current_url
+        driver.close()
+        auth_code = url.split('code=')[-1].split('&state')[0]        
+       
+        return auth_code
+
 
     def _get_access_token(self) -> dict:
         '''
