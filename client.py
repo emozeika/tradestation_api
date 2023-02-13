@@ -89,6 +89,17 @@ class TradeStationClient(object):
 
         return input('Please enter the authorization code from the url: ')
 
+    def _get_auth_code_input(self) -> str:
+        '''
+        Function to get manual input of MFA auth code from SMS message
+        
+        Returns:
+        -----
+        (str): string representing the auth_code
+        '''
+        code =  input('Enter 2FA code from text message: ')
+        return code
+
     
     def _authorize_auto(self) -> str:
         '''
@@ -102,31 +113,39 @@ class TradeStationClient(object):
         (str): authentication code form ts login redirect
         '''
 
+        #setting driver options and setting url connection
         chrome_options = Options()
         chrome_options.add_experimental_option("detach", True)
+        #chrome_options.headless = True #this keeps a browser from opening
+        chrome_options.add_argument("--log-level=3") #keeps output from webdriver quiet
         driver = webdriver.Chrome(CHROME_DRIVER_PATH, chrome_options=chrome_options)
         driver.get(self._build_auth_url())
         time.sleep(1)
 
         #inputting credentials
-        driver.find_element(By.ID, 'username').send_keys(self.CONFIG_['username'])
-        driver.find_element(By.ID, 'password').send_keys(self.CONFIG_['password'])
+        for elem in ['username', 'password']:
+            driver.find_element(By.ID, elem).send_keys(self.CONFIG_[elem])
         driver.find_element(By.ID, 'btn-login').click()
         time.sleep(1)
 
-        #checking if needing to 2FA
+        #checking if needing to MFA for account (current only trust device for 30 days)
         if 'mfa-sms-challenge' in driver.current_url:
-            code = input('Enter 2FA code from text message: ')
-            driver.find_element(By.ID, 'code').send_keys(code)
-            #TODO: make line above manual
-        time.sleep(1)
+            #TODO: make SMS otp_code input automatic.... maybe twilio integration???
+            #keeps trusted device for 30 days
+            driver.find_element(
+                By.XPATH, 
+                ".//*[contains(text(), 'Remember this device for 30 days')]").click() 
+            otp_code = self._get_auth_code_input()
+            driver.find_element(By.ID, 'code').send_keys(otp_code)
+            time.sleep(0.5)
+            driver.find_element(By.NAME, 'action').click()
+            time.sleep(2)
 
         #grabbing auth_code from current_url
-        auth_code = driver.current_url.split['code='][-1].split['&'][0]
-        print(auth_code)
-
-        time.sleep(1)
+        url = driver.current_url
         driver.close()
+        auth_code = url.split('code=')[-1].split('&state')[0]        
+       
         return auth_code
 
 
